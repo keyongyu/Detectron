@@ -46,6 +46,7 @@ from detectron.datasets.dataset_catalog import IM_DIR
 from detectron.datasets.dataset_catalog import IM_PREFIX
 from detectron.utils.timer import Timer
 import detectron.utils.boxes as box_utils
+import cv2
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,11 @@ class JsonDataset(object):
         for k in ['date_captured', 'url', 'license', 'file_name']:
             if k in entry:
                 del entry[k]
+
+    def load_image(self, entry):
+        im = cv2.imread(entry['image'])
+        return im
+
 
     def _add_gt_annotations(self, entry):
         """Add ground truth annotation metadata to an roidb entry."""

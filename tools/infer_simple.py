@@ -105,10 +105,10 @@ def main(args):
         im_list = glob.iglob(args.im_or_folder + '/*.' + args.image_ext)
     else:
         im_list = [args.im_or_folder]
-
+    ext="jpg"
     for i, im_name in enumerate(im_list):
         out_name = os.path.join(
-            args.output_dir, '{}'.format(os.path.basename(im_name) + '.pdf')
+            args.output_dir, '{}'.format(os.path.basename(im_name) + '.'+ext)
         )
         logger.info('Processing {} -> {}'.format(im_name, out_name))
         im = cv2.imread(im_name)
@@ -135,10 +135,12 @@ def main(args):
             cls_segms,
             cls_keyps,
             dataset=dummy_coco_dataset,
-            box_alpha=0.3,
+            box_alpha=0.2,
             show_class=True,
-            thresh=0.7,
-            kp_thresh=2
+            thresh=0.4,
+            kp_thresh=2,
+            ext=ext
+
         )
 
 

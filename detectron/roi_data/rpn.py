@@ -205,16 +205,18 @@ def _get_rpn_blobs(im_height, im_width, foas, all_anchors, gt_boxes):
     # (samples with replacement, but since the set of bg inds is large most
     # samples will not have repeats)
     num_bg = cfg.TRAIN.RPN_BATCH_SIZE_PER_IM - np.sum(labels == 1)
-    bg_inds = np.where(anchor_to_gt_max < cfg.TRAIN.RPN_NEGATIVE_OVERLAP)[0]
-    if len(bg_inds) > num_bg:
-        enable_inds = bg_inds[npr.randint(len(bg_inds), size=num_bg)]
-        labels[enable_inds] = 0
-    bg_inds = np.where(labels == 0)[0]
+    if len(gt_boxes) > 0:
+        bg_inds = np.where(anchor_to_gt_max < cfg.TRAIN.RPN_NEGATIVE_OVERLAP)[0]
+        if len(bg_inds) > num_bg:
+            enable_inds = bg_inds[npr.randint(len(bg_inds), size=num_bg)]
+            labels[enable_inds] = 0
+        bg_inds = np.where(labels == 0)[0]
 
     bbox_targets = np.zeros((num_inside, 4), dtype=np.float32)
-    bbox_targets[fg_inds, :] = data_utils.compute_targets(
-        anchors[fg_inds, :], gt_boxes[anchor_to_gt_argmax[fg_inds], :]
-    )
+    if len(gt_boxes) > 0:
+        bbox_targets[fg_inds, :] = data_utils.compute_targets(
+            anchors[fg_inds, :], gt_boxes[anchor_to_gt_argmax[fg_inds], :]
+        )
 
     # Bbox regression loss has the form:
     #   loss(x) = weight_outside * L(weight_inside * x)
@@ -232,6 +234,8 @@ def _get_rpn_blobs(im_height, im_width, foas, all_anchors, gt_boxes):
     bbox_outside_weights = np.zeros((num_inside, 4), dtype=np.float32)
     # uniform weighting of examples (given non-uniform sampling)
     num_examples = np.sum(labels >= 0)
+    if num_examples == 0:
+        num_examples = 1
     bbox_outside_weights[labels == 1, :] = 1.0 / num_examples
     bbox_outside_weights[labels == 0, :] = 1.0 / num_examples
 

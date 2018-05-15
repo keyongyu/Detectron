@@ -26,6 +26,7 @@ import numpy as np
 
 from detectron.core.config import cfg
 from detectron.datasets.json_dataset import JsonDataset
+from detectron.datasets.npstudio_dataset import NPStudioDataset
 import detectron.utils.boxes as box_utils
 import detectron.utils.keypoints as keypoint_utils
 import detectron.utils.segms as segm_utils
@@ -39,7 +40,8 @@ def combined_roidb_for_training(dataset_names, proposal_files):
     which involves caching certain types of metadata for each roidb entry.
     """
     def get_roidb(dataset_name, proposal_file):
-        ds = JsonDataset(dataset_name)
+        #ds = JsonDataset(dataset_name)
+        ds = NPStudioDataset('/home/keyong/Downloads/studio_watson/new_nps_empty_1000x1200/')
         roidb = ds.get_roidb(
             gt=True,
             proposal_file=proposal_file,
@@ -123,6 +125,8 @@ def filter_for_training(roidb):
                            (overlaps >= cfg.TRAIN.BG_THRESH_LO))[0]
         # image is only valid if such boxes exist
         valid = len(fg_inds) > 0 or len(bg_inds) > 0
+        #if not valid:
+        #   print("invalid")
         if cfg.MODEL.KEYPOINTS_ON:
             # If we're training for keypoints, exclude images with no keypoints
             valid = valid and entry['has_visible_keypoints']

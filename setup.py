@@ -57,5 +57,5 @@ ext_modules = [
 setup(
     name='Detectron',
     packages=['detectron'],
-    ext_modules=cythonize(ext_modules)
+    ext_modules=cythonize(ext_modules), install_requires=['imgaug']
 )

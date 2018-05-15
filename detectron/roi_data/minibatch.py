@@ -98,7 +98,8 @@ def _get_image_blob(roidb):
     processed_ims = []
     im_scales = []
     for i in range(num_images):
-        im = cv2.imread(roidb[i]['image'])
+        #im = cv2.imread(roidb[i]['image'])
+        im = roidb[i]['dataset'].load_image(roidb[i])
         assert im is not None, \
             'Failed to read image \'{}\''.format(roidb[i]['image'])
         if roidb[i]['flipped']:
