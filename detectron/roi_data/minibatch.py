@@ -67,11 +67,21 @@ def get_minibatch(roidb):
     # single tensor, hence we initialize each blob to an empty list
     blobs = {k: [] for k in get_minibatch_blob_names()}
     # Get the input image blob, formatted for caffe2
-    im_blob, im_scales = _get_image_blob(roidb)
+    #im_blob, im_scales = _get_image_blob(roidb)
+
+    im_blob, im_scales, new_roidb = _get_image_blob_and_labels(roidb)
+
+    # for o_entry, n_entry in zip(roidb, new_roidb):
+    #     assert (o_entry['boxes'] == n_entry['boxes']).all()
+    #     assert (o_entry['gt_classes'] == n_entry['gt_classes']).all()
+    #     assert (o_entry['gt_overlaps'] == n_entry['gt_overlaps']).todense().all()
+
+    roidb = new_roidb
     blobs['data'] = im_blob
     if cfg.RPN.RPN_ON:
         # RPN-only or end-to-end Faster/Mask R-CNN
         valid = rpn_roi_data.add_rpn_blobs(blobs, im_scales, roidb)
+        #fast_rcnn_roi_data.add_fast_rcnn_blobs_test(blobs, im_scales, roidb)
     elif cfg.RETINANET.RETINANET_ON:
         im_width, im_height = im_blob.shape[3], im_blob.shape[2]
         # im_width, im_height corresponds to the network input: padded image
@@ -85,6 +95,37 @@ def get_minibatch(roidb):
         valid = fast_rcnn_roi_data.add_fast_rcnn_blobs(blobs, im_scales, roidb)
     return blobs, valid
 
+def _get_image_blob_and_labels(roidb):
+    """Builds an input blob from the images in the roidb at the specified
+    scales.
+    """
+    num_images = len(roidb)
+    # Sample random scales to use for each image in this batch
+    scale_inds = np.random.randint(
+        0, high=len(cfg.TRAIN.SCALES), size=num_images
+    )
+    processed_ims = []
+    im_scales = []
+    new_roidb = []
+    for i in range(num_images):
+        # im = cv2.imread(roidb[i]['image'])
+        im, new_labels = roidb[i]['dataset'].get_im_and_lbl(roidb[i])
+        assert im is not None, \
+            'Failed to read image \'{}\''.format(roidb[i]['image'])
+        if roidb[i]['flipped']:
+            im = im[:, ::-1, :]
+        target_size = cfg.TRAIN.SCALES[scale_inds[i]]
+        im, im_scale = blob_utils.prep_im_for_blob(
+            im, cfg.PIXEL_MEANS, target_size, cfg.TRAIN.MAX_SIZE
+        )
+        im_scales.append(im_scale)
+        processed_ims.append(im)
+        new_roidb.append(new_labels)
+
+    # Create a blob to hold the input images
+    blob = blob_utils.im_list_to_blob(processed_ims)
+
+    return blob, im_scales, new_roidb
 
 def _get_image_blob(roidb):
     """Builds an input blob from the images in the roidb at the specified
@@ -98,7 +139,7 @@ def _get_image_blob(roidb):
     processed_ims = []
     im_scales = []
     for i in range(num_images):
-        #im = cv2.imread(roidb[i]['image'])
+        # im = cv2.imread(roidb[i]['image'])
         im = roidb[i]['dataset'].load_image(roidb[i])
         assert im is not None, \
             'Failed to read image \'{}\''.format(roidb[i]['image'])

@@ -20,7 +20,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from detectron.datasets import json_dataset
+#from detectron.datasets import json_dataset as my_dataset
+from detectron.datasets import npstudio_dataset as my_dataset
 from detectron.utils import blob as blob_utils
 import detectron.roi_data.fast_rcnn as fast_rcnn_roi_data
 
@@ -45,7 +46,7 @@ class GenerateProposalLabelsOp(object):
         # implementation we are *not* filtering crowd proposals.
         # This choice should be investigated in the future (it likely does
         # not matter).
-        json_dataset.add_proposals(roidb, rois, im_scales, crowd_thresh=0)
+        my_dataset.add_proposals(roidb, rois, im_scales, crowd_thresh=0)
         blobs = {k: [] for k in output_blob_names}
         fast_rcnn_roi_data.add_fast_rcnn_blobs(blobs, im_scales, roidb)
         for i, k in enumerate(output_blob_names):
