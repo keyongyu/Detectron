@@ -480,7 +480,7 @@ class NPStudioDataset(object):
                 h = int(w / aspect)
                 if h > new_h:
                     h = new_h
-                    w = h * aspect
+                    w = int(h * aspect)
                 x1 = random.randint(0, new_w - w)
                 y1 = random.randint(0, new_h - h)
                 x2 = x1 + w - 1
@@ -537,7 +537,7 @@ class NPStudioDataset(object):
                 h = int(w / aspect)
                 if h > new_h:
                     h = new_h
-                    w = h * aspect
+                    w = int(h * aspect)
                 x1 = random.randint(0, new_w - w - 1)
                 y1 = random.randint(0, new_h - h - 1)
                 x2 = x1 + w - 1
