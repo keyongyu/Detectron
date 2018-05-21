@@ -133,6 +133,12 @@ class Sku:
         new_w = min(x2, im.shape[1]) - x
         new_h = min(y2, im.shape[0]) - y
 
+        if new_w*new_h*1.0 /(im.shape[0]*im.shape[1]) < 1/(24.0*24.0):
+            #kx=new_w*1.0/im.shape[1]
+            #ky=new_h*1.0/im.shape[0]
+            #print("<<<<<<<<<<<<discard small sku>>>>>>>>>>> cls:%02d, kx: %.04f, ky: %.04f" %(self.sku_cls, kx,ky))
+            return False
+
         sku_img = cv2.resize(self.img, dsize=(new_w, new_h), interpolation=cv2.INTER_CUBIC)
         sku_img = shape_augmentor.augment_image(sku_img)
 
@@ -152,7 +158,7 @@ class Sku:
         im[new_y:new_h + new_y, new_x:new_w + new_x] = new_sku_img
 
         # return new_x, new_y, new_w, new_h
-        return
+        return True
 
     # @property
     # def shape(self):
@@ -423,6 +429,8 @@ class NPStudioDataset(object):
         new_w = im.shape[1]
         sku_codes = self._sample_map.values()
 
+        ratio = random.uniform(1/(13*1.6), 1/(13*0.85))/100
+
         for _ in range(max_attemps):
             sku_with_same_code = sku_codes[random.randint(0, len(sku_codes) - 1)].values()
             sku = sku_with_same_code[random.randint(0, len(sku_with_same_code) - 1)]
@@ -433,8 +441,9 @@ class NPStudioDataset(object):
 
             #23 will be 12
 
-            w = int(random.uniform(new_w * (1/(13*1.7)), new_w * (1/(13*0.85)) ))
-            w = int(self._sku_width[cls]*w/100)
+            w = new_w * ratio
+
+            w = int(self._sku_width[cls]*w)
 
             #w = int(random.uniform(new_w * 0.04, new_w * 0.125))
             h = int(w / aspect)
@@ -456,8 +465,8 @@ class NPStudioDataset(object):
                     break;
 
             if good_try:
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                if sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor):
+                    new_boxes.append([cls, x1, y1, x2, y2])
 
     def get_im_and_lbl(self, entry):
 
@@ -479,8 +488,8 @@ class NPStudioDataset(object):
                 x1, y1, x2, y2 = box_utils.clip_xyxy_to_image(
                     x1, y1, x2, y2, im.shape[0], im.shape[1]
                 )
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                if sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor):
+                    new_boxes.append([cls, x1, y1, x2, y2])
 
             if len(new_boxes) == 0:
                 self.draw_random_sku(im, new_boxes)
@@ -519,8 +528,8 @@ class NPStudioDataset(object):
                     continue
 
                 sku = self._sample_map[sku_code][png_file]
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                if sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor):
+                    new_boxes.append([cls, x1, y1, x2, y2])
 
             if len(new_boxes) == 0:
                 self.draw_random_sku(im, new_boxes)
@@ -528,7 +537,7 @@ class NPStudioDataset(object):
             self._fill_bboxes_in_entry(new_boxes, new_entry)
 
         else:
-            zoom_out = random.uniform(0.7, 1.0)
+            zoom_out = random.uniform(0.8, 1.0)
             h, w, c = im.shape
             im = cv2.resize(im, None, fx=zoom_out, fy=zoom_out)
             new_h, new_w, _ = im.shape
@@ -558,8 +567,9 @@ class NPStudioDataset(object):
                 # )
 
                 sku = self._sample_map[sku_code][png_file]
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                if sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor):
+                    new_boxes.append([cls, x1, y1, x2, y2])
+
 
             if len(new_boxes) == 0:
                 self.draw_random_sku(im, new_boxes)
