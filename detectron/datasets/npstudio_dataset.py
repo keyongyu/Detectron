@@ -50,6 +50,7 @@ import detectron.utils.boxes as box_utils
 
 logger = logging.getLogger(__name__)
 
+
 def _compute_targets(entry):
     """Compute bounding-box regression targets for an image."""
     # Indices of ground-truth ROIs
@@ -82,6 +83,7 @@ def _compute_targets(entry):
     targets[ex_inds, 1:] = box_utils.bbox_transform_inv(
         ex_rois, gt_rois, cfg.MODEL.BBOX_REG_WEIGHTS)
     return targets
+
 
 def _load_template_json(template_file):
     classes = ['__background__']
@@ -210,6 +212,36 @@ class NPStudioDataset(object):
         # self._val_count = val_count
 
         self._sample_map = _load_sample_map(self._sku_sample_dir, self.category_to_id_map)
+        sku_width = {}
+        sku_width["000"] = 120
+        sku_width["001"] = 120
+        sku_width["002"] = 120
+        sku_width["003"] = 120
+        sku_width["004"] = 120
+        sku_width["005"] = 160
+        sku_width["006"] = 160
+        sku_width["007"] = 160
+        sku_width["008"] = 125
+        sku_width["009"] = 136
+        sku_width["010"] = 125
+        sku_width["011"] = 84
+        sku_width["012"] = 158
+        sku_width["013"] = 150
+        sku_width["014"] = 133
+        sku_width["015"] = 165
+        sku_width["016"] = 148
+        sku_width["017"] = 158
+        sku_width["018"] = 60
+        sku_width["019"] = 135
+        sku_width["020"] = 120
+        sku_width["021"] = 167
+        sku_width["022"] = 136
+        sku_width["023"] = 100
+        sku_width["024"] = 105
+        sku_width["025"] = 167
+        sku_width["026"] = 120
+
+        self._sku_width = [sku_width[key] for key in sorted(sku_width.keys())]
 
         ## batch reader ##
         self._perm_idx = None
@@ -224,7 +256,7 @@ class NPStudioDataset(object):
         self._init_keypoints()
         sometimes = lambda aug: iaa.Sometimes(0.6, aug)
         self._shape_augmentor = iaa.Sequential([
-            iaa.Crop(percent=(0.0, 0.04)),
+            iaa.Crop(percent=(0.0, 0.13)),
             sometimes(iaa.Affine(
                 scale={"x": (0.9, 1.1), "y": (0.9, 1.1)},
                 # scale images to 80-120% of their size, individually per axis
@@ -248,6 +280,7 @@ class NPStudioDataset(object):
                                iaa.AverageBlur(k=(2, 4)),
                                iaa.MedianBlur(k=(1, 3))
                            ])),
+                           iaa.Add((-15, 15), per_channel=0.5),
                            # sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))),
                            iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255)),
                            iaa.ContrastNormalization((0.7, 1.3), per_channel=0.1),
@@ -382,8 +415,49 @@ class NPStudioDataset(object):
     def save_image(self, im, new_boxes, idx):
         for box in new_boxes:
             cls, x1, y1, x2, y2 = box
-            cv2.rectangle(im, (int(x1),int (y1)), (int(x2),int( y2) ), (0, 255, 0), 6)
+            cv2.rectangle(im, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 6)
         cv2.imwrite("/home/keyong/test/" + idx, im)
+
+    def draw_random_sku(self, im, new_boxes, max_attemps=8):
+        new_h = im.shape[0]
+        new_w = im.shape[1]
+        sku_codes = self._sample_map.values()
+
+        for _ in range(max_attemps):
+            sku_with_same_code = sku_codes[random.randint(0, len(sku_codes) - 1)].values()
+            sku = sku_with_same_code[random.randint(0, len(sku_with_same_code) - 1)]
+            cls = sku.sku_cls
+
+            aspect = sku.aspect
+            aspect = random.uniform(0.9 * aspect, 1.1 * aspect)
+
+            #23 will be 12
+
+            w = int(random.uniform(new_w * (1/(13*1.7)), new_w * (1/(13*0.85)) ))
+            w = int(self._sku_width[cls]*w/100)
+
+            #w = int(random.uniform(new_w * 0.04, new_w * 0.125))
+            h = int(w / aspect)
+            if h > new_h:
+                h = new_h
+                w = int(h * aspect)
+            x1 = random.randint(0, new_w - w)
+            y1 = random.randint(0, new_h - h)
+            x2 = x1 + w - 1
+            y2 = y1 + h - 1
+            good_try = True
+            for box in new_boxes:
+                l = max(x1, box[1])
+                t = max(y1, box[2])
+                r = min(x2, box[3])
+                b = min(y2, box[4])
+                if r > l and b > t:
+                    good_try = False
+                    break;
+
+            if good_try:
+                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
+                new_boxes.append([cls, x1, y1, x2, y2])
 
     def get_im_and_lbl(self, entry):
 
@@ -409,33 +483,13 @@ class NPStudioDataset(object):
                 new_boxes.append([cls, x1, y1, x2, y2])
 
             if len(new_boxes) == 0:
-                new_h=im.shape[0]
-                new_w=im.shape[1]
-                sku_codes = self._sample_map.values()
-                sku_with_same_code = sku_codes[random.randint(0, len(sku_codes)-1)].values()
-                sku = sku_with_same_code[random.randint(0, len(sku_with_same_code)-1)]
-                cls = sku.sku_cls
-                aspect = sku.aspect
-                aspect = random.uniform(0.9 * aspect, 1.1 * aspect)
-
-                w = int(random.uniform(new_w * 0.10, new_w * 0.25))
-                h = int(w / aspect)
-                if h > new_h:
-                    h = new_h
-                    w = h * aspect
-                x1 = random.randint(0, new_w - w)
-                y1 = random.randint(0, new_h - h)
-                x2 = x1 + w - 1
-                y2 = y1 + h - 1
-
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                self.draw_random_sku(im, new_boxes)
 
             self._fill_bboxes_in_entry(new_boxes, new_entry)
 
         elif option <= 0.6:
             # crop
-            scale = random.uniform(0.5, 1.0)
+            scale = random.uniform(0.7, 1.0)
             h, w, _ = im.shape
             new_h, new_w = int(h * scale), int(w * scale)
 
@@ -469,30 +523,12 @@ class NPStudioDataset(object):
                 new_boxes.append([cls, x1, y1, x2, y2])
 
             if len(new_boxes) == 0:
-                sku_codes = self._sample_map.values()
-                sku_with_same_code = sku_codes[random.randint(0, len(sku_codes)-1)].values()
-                sku = sku_with_same_code[random.randint(0, len(sku_with_same_code)-1)]
-                cls = sku.sku_cls
-                aspect = sku.aspect
-                aspect = random.uniform(0.9 * aspect, 1.1 * aspect)
-
-                w = int(random.uniform(new_w * 0.10, new_w * 0.25))
-                h = int(w / aspect)
-                if h > new_h:
-                    h = new_h
-                    w = int(h * aspect)
-                x1 = random.randint(0, new_w - w)
-                y1 = random.randint(0, new_h - h)
-                x2 = x1 + w - 1
-                y2 = y1 + h - 1
-
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                self.draw_random_sku(im, new_boxes)
 
             self._fill_bboxes_in_entry(new_boxes, new_entry)
 
         else:
-            zoom_out = random.uniform(0.5, 1.0)
+            zoom_out = random.uniform(0.7, 1.0)
             h, w, c = im.shape
             im = cv2.resize(im, None, fx=zoom_out, fy=zoom_out)
             new_h, new_w, _ = im.shape
@@ -526,25 +562,7 @@ class NPStudioDataset(object):
                 new_boxes.append([cls, x1, y1, x2, y2])
 
             if len(new_boxes) == 0:
-                sku_codes = self._sample_map.values()
-                sku_with_same_code = sku_codes[random.randint(0, len(sku_codes) - 1)].values()
-                sku = sku_with_same_code[random.randint(0, len(sku_with_same_code) - 1)]
-                cls = sku.sku_cls
-                aspect = sku.aspect
-                aspect = random.uniform(0.9 * aspect, 1.1 * aspect)
-
-                w = int(random.uniform(new_w * 0.10, new_w * 0.25))
-                h = int(w / aspect)
-                if h > new_h:
-                    h = new_h
-                    w = int(h * aspect)
-                x1 = random.randint(0, new_w - w - 1)
-                y1 = random.randint(0, new_h - h - 1)
-                x2 = x1 + w - 1
-                y2 = y1 + h - 1
-
-                sku.put(im, int(x1), int(y1), int(x2), int(y2), self._shape_augmentor, self._color_augmentor)
-                new_boxes.append([cls, x1, y1, x2, y2])
+                self.draw_random_sku(im, new_boxes)
 
             self._fill_bboxes_in_entry(new_boxes, new_entry)
 
