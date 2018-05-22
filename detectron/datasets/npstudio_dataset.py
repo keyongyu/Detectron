@@ -587,38 +587,40 @@ class NPStudioDataset(object):
         for entry in self._roidb:
             index = entry["file_name"]
             full_json_file = os.path.join(self._data_path, 'Annotations', index + '.json')
-            with open(full_json_file, "rb") as json_fp:
-                json_data = json.loads(json_fp.read().decode('utf-8'))
-                bboxes = []
-                sample_bboxes = []
-                for bbox in json_data.get("bndboxes"):
-                    w = float(bbox["w"])
-                    h = float(bbox["h"])
-                    xmin = float(bbox["x"])
-                    ymin = float(bbox["y"])
-                    sku_code = bbox["id"]
+            bboxes = []
+            sample_bboxes = []
 
-                    xmax = w + xmin
-                    ymax = h + ymin
+            if os.path.isfile(full_json_file):
+                with open(full_json_file, "rb") as json_fp:
+                   json_data = json.loads(json_fp.read().decode('utf-8'))
+                   for bbox in json_data.get("bndboxes"):
+                        w = float(bbox["w"])
+                        h = float(bbox["h"])
+                        xmin = float(bbox["x"])
+                        ymin = float(bbox["y"])
+                        sku_code = bbox["id"]
 
-                    xmin = max(xmin, 0.0)
-                    ymin = max(ymin, 0.0)
+                        xmax = w + xmin
+                        ymax = h + ymin
 
-                    assert xmin >= 0.0 and xmin <= xmax, \
-                        'Invalid bounding box x-coord xmin {} or xmax {} at {}.json' \
-                            .format(xmin, xmax, index)
-                    assert ymin >= 0.0 and ymin <= ymax, \
-                        'Invalid bounding box y-coord ymin {} or ymax {} at {}.json' \
-                            .format(ymin, ymax, index)
-                    cls = self.category_to_id_map[sku_code]
-                    # bboxes.append([cls, xmin, ymin, xmax, ymax])
-                    sample_bbox = (sku_code,
-                                   bbox.get("file", ""),
-                                   [int(xmin), int(ymin), int(xmax), int(ymax)],
-                                   cls
-                                   )
-                    bboxes.append([cls, int(xmin), int(ymin), int(xmax), int(ymax)])
-                    sample_bboxes.append(sample_bbox)
+                        xmin = max(xmin, 0.0)
+                        ymin = max(ymin, 0.0)
+
+                        assert xmin >= 0.0 and xmin <= xmax, \
+                            'Invalid bounding box x-coord xmin {} or xmax {} at {}.json' \
+                                .format(xmin, xmax, index)
+                        assert ymin >= 0.0 and ymin <= ymax, \
+                            'Invalid bounding box y-coord ymin {} or ymax {} at {}.json' \
+                                .format(ymin, ymax, index)
+                        cls = self.category_to_id_map[sku_code]
+                        # bboxes.append([cls, xmin, ymin, xmax, ymax])
+                        sample_bbox = (sku_code,
+                                       bbox.get("file", ""),
+                                       [int(xmin), int(ymin), int(xmax), int(ymax)],
+                                       cls
+                                       )
+                        bboxes.append([cls, int(xmin), int(ymin), int(xmax), int(ymax)])
+                        sample_bboxes.append(sample_bbox)
 
             idx_to_annotation[index] = bboxes
             idx_to_draw_sample[index] = sample_bboxes
