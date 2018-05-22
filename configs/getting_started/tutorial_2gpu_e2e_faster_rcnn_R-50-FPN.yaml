@@ -32,8 +32,8 @@ FPN:
   FPN_ON: True
   MULTILEVEL_ROIS: True
   MULTILEVEL_RPN: True
-  RPN_ANCHOR_START_SIZE: 16
-  RPN_ASPECT_RATIOS: (0.25, 0.5, 1, 1.5)
+  RPN_ANCHOR_START_SIZE: 24
+  RPN_ASPECT_RATIOS: (0.25,0.33, 0.5, 1, 1.5)
 FAST_RCNN:
   ROI_BOX_HEAD: fast_rcnn_heads.add_roi_2mlp_head
   ROI_XFORM_METHOD: RoIAlign
@@ -42,16 +42,16 @@ FAST_RCNN:
 TRAIN:
   WEIGHTS: https://s3-us-west-2.amazonaws.com/detectron/ImageNetPretrained/MSRA/R-50.pkl
   DATASETS: ('coco_2014_train',)
-  SCALES: (500,)
-  MAX_SIZE: 833
+  SCALES: (600,)
+  MAX_SIZE: 800
   BATCH_SIZE_PER_IM: 256
   RPN_PRE_NMS_TOP_N: 2000  # Per FPN level
   USE_FLIPPED: False
   ASPECT_GROUPING: False
 TEST:
   DATASETS: ('coco_2014_minival',)
-  SCALE: 500
-  MAX_SIZE: 833
+  SCALE: 600
+  MAX_SIZE: 800
   NMS: 0.5
   RPN_PRE_NMS_TOP_N: 1000  # Per FPN level
   RPN_POST_NMS_TOP_N: 1000

@@ -133,7 +133,7 @@ class Sku:
         new_w = min(x2, im.shape[1]) - x
         new_h = min(y2, im.shape[0]) - y
 
-        if new_w*new_h*1.0 /(im.shape[0]*im.shape[1]) < 1/(24.0*24.0):
+        if new_w*new_h*1.0 /(im.shape[0]*im.shape[1]) < 1/(20.0*20.0):
             #kx=new_w*1.0/im.shape[1]
             #ky=new_h*1.0/im.shape[0]
             #print("<<<<<<<<<<<<discard small sku>>>>>>>>>>> cls:%02d, kx: %.04f, ky: %.04f" %(self.sku_cls, kx,ky))
@@ -245,7 +245,7 @@ class NPStudioDataset(object):
         sku_width["023"] = 100
         sku_width["024"] = 105
         sku_width["025"] = 167
-        sku_width["026"] = 120
+        sku_width["026"] = 130
 
         self._sku_width = [sku_width[key] for key in sorted(sku_width.keys())]
 
@@ -262,12 +262,12 @@ class NPStudioDataset(object):
         self._init_keypoints()
         sometimes = lambda aug: iaa.Sometimes(0.6, aug)
         self._shape_augmentor = iaa.Sequential([
-            iaa.Crop(percent=(0.0, 0.13)),
+            iaa.Crop(percent=(0.0, 0.08)),
             sometimes(iaa.Affine(
                 scale={"x": (0.9, 1.1), "y": (0.9, 1.1)},
                 # scale images to 80-120% of their size, individually per axis
-                # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent (per axis)
-                rotate=(-3, 3),  # rotate by -15 to +15 degrees
+                translate_percent={"x": (-0.1, 0.1), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent (per axis)
+                rotate=(-4, 4),  # rotate by -15 to +15 degrees
                 shear=(-5, 5),  # shear by -16 to +16 degrees
                 order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
                 # cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
@@ -286,7 +286,7 @@ class NPStudioDataset(object):
                                iaa.AverageBlur(k=(2, 4)),
                                iaa.MedianBlur(k=(1, 3))
                            ])),
-                           iaa.Add((-15, 15), per_channel=0.5),
+                           iaa.Add((-30, 15), per_channel=0.5),
                            # sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))),
                            iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255)),
                            iaa.ContrastNormalization((0.7, 1.3), per_channel=0.1),
@@ -424,12 +424,12 @@ class NPStudioDataset(object):
             cv2.rectangle(im, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 6)
         cv2.imwrite("/home/keyong/test/" + idx, im)
 
-    def draw_random_sku(self, im, new_boxes, max_attemps=8):
+    def draw_random_sku(self, im, new_boxes, max_attemps=9):
         new_h = im.shape[0]
         new_w = im.shape[1]
         sku_codes = self._sample_map.values()
 
-        ratio = random.uniform(1/(13*1.6), 1/(13*0.85))/100
+        ratio = random.uniform(1/(13*1.5), 1/(13*0.85))/100
 
         for _ in range(max_attemps):
             sku_with_same_code = sku_codes[random.randint(0, len(sku_codes) - 1)].values()
@@ -578,7 +578,7 @@ class NPStudioDataset(object):
 
         _add_class_assignments([new_entry])
         new_entry['bbox_targets'] = _compute_targets(new_entry)
-        #self.save_image(im, new_boxes, idx)
+        self.save_image(im, new_boxes, idx)
         return im, new_entry
 
     def _load_np_annotation(self):
